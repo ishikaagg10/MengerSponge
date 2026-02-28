@@ -3,9 +3,6 @@ import { CanvasAnimation } from "../lib/webglutils/CanvasAnimation.js";
 import { MengerSponge } from "./MengerSponge.js";
 import { Mat4, Vec3 } from "../lib/TSM.js";
 
-/**
- * Might be useful for designing any animation GUI
- */
 interface IGUI {
   viewMatrix(): Mat4;
   projMatrix(): Mat4;
@@ -15,10 +12,6 @@ interface IGUI {
   onKeydown(ke: KeyboardEvent): void;
 }
 
-/**
- * Handles Mouse and Button events along with
- * the the camera.
- */
 export class GUI implements IGUI {
   private static readonly rotationSpeed: number = 0.05;
   private static readonly zoomSpeed: number = 0.1;
@@ -37,12 +30,6 @@ export class GUI implements IGUI {
   private sponge: MengerSponge;
   private animation: CanvasAnimation;
 
-  /**
-   *
-   * @param canvas required to get the width and height of the canvas
-   * @param animation required as a back pointer for some of the controls
-   * @param sponge required for some of the controls
-   */
   constructor(
     canvas: HTMLCanvasElement,
     animation: CanvasAnimation,
@@ -56,18 +43,14 @@ export class GUI implements IGUI {
     this.sponge = sponge;
     this.animation = animation;
 
-	this.reset();
+    this.reset();
 
     this.registerEventListeners(canvas);
   }
 
-  /**
-   * Resets the state of the GUI
-   */
   public reset(): void {
     this.fps = false;
     this.dragging = false;
-    /* Create camera setup */
     this.camera = new Camera(
       new Vec3([0, 0, -6]),
       new Vec3([0, 0, 0]),
@@ -79,10 +62,6 @@ export class GUI implements IGUI {
     );
   }
 
-  /**
-   * Sets the GUI's camera to the given camera
-   * @param cam a new camera
-   */
   public setCamera(
     pos: Vec3,
     target: Vec3,
@@ -95,118 +74,99 @@ export class GUI implements IGUI {
     this.camera = new Camera(pos, target, upDir, fov, aspect, zNear, zFar);
   }
 
-  /**
-   * Returns the view matrix of the camera
-   */
   public viewMatrix(): Mat4 {
     return this.camera.viewMatrix();
   }
 
-  /**
-   * Returns the projection matrix of the camera
-   */
   public projMatrix(): Mat4 {
     return this.camera.projMatrix();
   }
 
-  /**
-   * Callback function for the start of a drag event.
-   * @param mouse
-   */
   public dragStart(mouse: MouseEvent): void {
     this.dragging = true;
     this.prevX = mouse.screenX;
     this.prevY = mouse.screenY;
   }
 
-  /**
-   * The callback function for a drag event.
-   * This event happens after dragStart and
-   * before dragEnd.
-   * @param mouse
-   */
   public drag(mouse: MouseEvent): void {
-	  
-	  // TODO: Your code here for left and right mouse drag
-	  
+    if (!this.dragging) return;
+
+    const dx = mouse.screenX - this.prevX;
+    const dy = mouse.screenY - this.prevY;
+
+    if (mouse.buttons & 1) {
+      this.camera.yaw(dx * GUI.rotationSpeed, dx > 0);
+      this.camera.pitch(dy * GUI.rotationSpeed, dy > 0);
+    } else if (mouse.buttons & 2) {
+      this.camera.offsetDist(dy * GUI.zoomSpeed);
+    }
+
+    this.prevX = mouse.screenX;
+    this.prevY = mouse.screenY;
   }
 
-  /**
-   * Callback function for the end of a drag event
-   * @param mouse
-   */
   public dragEnd(mouse: MouseEvent): void {
     this.dragging = false;
     this.prevX = 0;
     this.prevY = 0;
   }
 
-  /**
-   * Callback function for a key press event
-   * @param key
-   */
   public onKeydown(key: KeyboardEvent): void {
-    /*
-       Note: key.code uses key positions, i.e a QWERTY user uses y where
-             as a Dvorak user must press F for the same action.
-       Note: arrow keys are only registered on a KeyDown event not a
-       KeyPress event
-       We can use KeyDown due to auto repeating.
-     */
-
-	// TOOD: Your code for key handling
-
     switch (key.code) {
       case "KeyW": {
-
-        break;
-      }
-      case "KeyA": {
-
+        const f = this.camera.forward();
+        this.camera.offset(f, -GUI.zoomSpeed, true);
         break;
       }
       case "KeyS": {
-
+        const f = this.camera.forward();
+        this.camera.offset(f, GUI.zoomSpeed, true);
+        break;
+      }
+      case "KeyA": {
+        const r = this.camera.right();
+        this.camera.offset(r, -GUI.panSpeed, true);
         break;
       }
       case "KeyD": {
-
+        const r = this.camera.right();
+        this.camera.offset(r, GUI.panSpeed, true);
         break;
       }
       case "KeyR": {
-
+        this.camera.offset(this.camera.up(), GUI.panSpeed, true);
         break;
       }
       case "ArrowLeft": {
-
+        this.camera.roll(GUI.rollSpeed, false);
         break;
       }
       case "ArrowRight": {
-
+        this.camera.roll(GUI.rollSpeed, true);
         break;
       }
       case "ArrowUp": {
-
+        this.camera.offset(this.camera.up(), GUI.panSpeed, true);
         break;
       }
       case "ArrowDown": {
-
+        this.camera.offset(this.camera.up(), -GUI.panSpeed, true);
         break;
       }
       case "Digit1": {
-
+        this.sponge.setLevel(1);
         break;
       }
       case "Digit2": {
-
+        this.sponge.setLevel(2);
         break;
       }
       case "Digit3": {
-
+        this.sponge.setLevel(3);
         break;
       }
       case "Digit4": {
-
+        this.sponge.setLevel(4);
         break;
       }
       default: {
@@ -216,17 +176,11 @@ export class GUI implements IGUI {
     }
   }
 
-  /**
-   * Registers all event listeners for the GUI
-   * @param canvas The canvas being used
-   */
   private registerEventListeners(canvas: HTMLCanvasElement): void {
-    /* Event listener for key controls */
     window.addEventListener("keydown", (key: KeyboardEvent) =>
       this.onKeydown(key)
     );
 
-    /* Event listener for mouse controls */
     canvas.addEventListener("mousedown", (mouse: MouseEvent) =>
       this.dragStart(mouse)
     );
@@ -239,7 +193,6 @@ export class GUI implements IGUI {
       this.dragEnd(mouse)
     );
 
-    /* Event listener to stop the right click menu */
     canvas.addEventListener("contextmenu", (event: any) =>
       event.preventDefault()
     );
