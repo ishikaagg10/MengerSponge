@@ -94,9 +94,18 @@ export class GUI implements IGUI {
     const dx = mouse.screenX - this.prevX;
     const dy = mouse.screenY - this.prevY;
 
+    if (dx === 0 && dy === 0) return;
+
     if (mouse.buttons & 1) {
-      this.camera.yaw(dx * GUI.rotationSpeed, dx > 0);
-      this.camera.pitch(dy * GUI.rotationSpeed, dy > 0);
+      const dragDir = Vec3.sum(
+        this.camera.right().scale(dx),
+        this.camera.up().scale(-dy)
+      );
+
+      const axis = Vec3.cross(dragDir, this.camera.forward());
+
+      this.camera.rotate(axis, GUI.rotationSpeed);
+
     } else if (mouse.buttons & 2) {
       this.camera.offsetDist(dy * GUI.zoomSpeed);
     }
