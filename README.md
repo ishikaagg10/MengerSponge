@@ -10,3 +10,6 @@ We implemented an interactive animation where the user can grab and spin the Men
 
 3. Mountainous Terrain
 We changed the checkerboard into a mountainous terrain. The terrain is procedurally generated in real time using a 2D Fractal Brownian Motion (FBM) noise function. There is also an elevation-based color map that transitions between green valleys, grey rocky slopes, and white snow caps depending on the fragment's calculated height. The mountainous terrain is automatically generated, so no additional steps need to be taken to render it.
+
+3. "Skybox" to wrap our scene:
+We implemented a skybox that wraps the entire scene. The skybox always stays centred on the camera eye regardless of movement. It computes a blue gradient blending from a pale horizon color up to a dark blue, a sun disc with an atmospheric halo placed in the direction matching the scene light source, a warm orange horizon glow, and a procedural star field that fades in away from the sun and near the horizon. The skybox is always visible at all times.
