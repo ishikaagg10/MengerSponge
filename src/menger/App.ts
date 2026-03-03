@@ -91,7 +91,6 @@ export class MengerAnimation extends CanvasAnimation {
 
   public reset(): void {
     this.lightPosition = new Vec4([-10.0, 10.0, -10.0, 1.0]);
-    /* Black clear — skybox covers the entire background each frame */
     this.backgroundColor = new Vec4([0.0, 0.0, 0.0, 1.0]);
     this.initSkybox();
     this.initMenger();
@@ -99,14 +98,6 @@ export class MengerAnimation extends CanvasAnimation {
     this.gui.reset();
   }
 
-  /* ------------------------------------------------------------------
-     initSkybox
-     Key points:
-       • The VAO is created and bound FIRST, then all buffer + attrib
-         calls happen inside it so the state is captured correctly.
-       • We explicitly unbind the VAO at the end so subsequent inits
-         don't corrupt it.
-  ------------------------------------------------------------------ */
   public initSkybox(): void {
     const gl: WebGLRenderingContext = this.ctx;
 
@@ -117,7 +108,6 @@ export class MengerAnimation extends CanvasAnimation {
     this.extVAO.bindVertexArrayOES(this.skyboxVAO);
 
     const S = 1.0;
-    // prettier-ignore
     const positions = new Float32Array([
       -S, -S, -S,  // 0
        S, -S, -S,  // 1
@@ -129,8 +119,6 @@ export class MengerAnimation extends CanvasAnimation {
       -S,  S,  S,  // 7
     ]);
 
-    // Inside-facing winding (camera is inside the cube)
-    // prettier-ignore
     const indices = new Uint16Array([
       0, 2, 1,  0, 3, 2,   // -Z
       4, 5, 6,  4, 6, 7,   // +Z
@@ -205,7 +193,6 @@ export class MengerAnimation extends CanvasAnimation {
 
     this.extVAO.bindVertexArrayOES(null);
 
-    /* Shadow reuses menger buffers */
     this.shadowProgram = WebGLUtilities.createProgram(gl, shadowVSText, shadowFSText);
     gl.useProgram(this.shadowProgram);
 
@@ -291,12 +278,6 @@ export class MengerAnimation extends CanvasAnimation {
     gl.depthFunc(gl.LEQUAL);
     gl.frontFace(gl.CCW);
 
-    /* ----------------------------------------------------------
-       PASS 1 – Skybox
-       Depth writes OFF so every other pixel will overwrite it.
-       depthFunc LEQUAL lets gl_Position.z == gl_Position.w
-       (i.e. depth = 1.0) pass the depth test.
-    ---------------------------------------------------------- */
     gl.disable(gl.CULL_FACE);
     gl.depthMask(false);
 
@@ -315,9 +296,6 @@ export class MengerAnimation extends CanvasAnimation {
 
     gl.depthMask(true);
 
-    /* ----------------------------------------------------------
-       PASS 2 – Floor / terrain
-    ---------------------------------------------------------- */
     gl.disable(gl.CULL_FACE);
     gl.useProgram(this.floorProgram);
     this.extVAO.bindVertexArrayOES(this.floorVAO);
@@ -326,9 +304,6 @@ export class MengerAnimation extends CanvasAnimation {
     gl.uniform4fv(this.floorLightUniformLocation, this.lightPosition.xyzw);
     gl.drawElements(gl.TRIANGLES, this.floorIndexCount, gl.UNSIGNED_INT, 0);
 
-    /* ----------------------------------------------------------
-       PASS 3 – Menger sponge
-    ---------------------------------------------------------- */
     gl.enable(gl.CULL_FACE);
     gl.cullFace(gl.BACK);
 
@@ -358,9 +333,6 @@ export class MengerAnimation extends CanvasAnimation {
     gl.uniformMatrix4fv(this.mengerProjUniformLocation, false, new Float32Array(this.gui.projMatrix().all()));
     gl.drawElements(gl.TRIANGLES, this.sponge.indicesFlat().length, gl.UNSIGNED_INT, 0);
 
-    /* ----------------------------------------------------------
-       PASS 4 – Shadow
-    ---------------------------------------------------------- */
     gl.disable(gl.CULL_FACE);
     gl.useProgram(this.shadowProgram);
     this.extVAO.bindVertexArrayOES(this.shadowVAO);

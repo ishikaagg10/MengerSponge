@@ -163,20 +163,6 @@ export let shadowFSText = `
     }
 `;
 
-/* ===================================================================
-   SKYBOX SHADERS
-   ===================================================================
-   Strategy:
-     Vertex shader  – strips translation from the view matrix so the
-                      box is always centred on the camera eye.  Sets
-                      gl_Position = pos.xyww so that after the
-                      perspective divide z/w == 1.0, placing the box
-                      exactly at the far plane.
-     Fragment shader – fully procedural sky (no texture files needed):
-                       blue gradient, sun disc + halo, horizon glow,
-                       and a star field.
-   =================================================================== */
-
 export let skyboxVSText = `
     precision mediump float;
 
@@ -190,7 +176,6 @@ export let skyboxVSText = `
     void main () {
         texCoords = vertPosition;
 
-        /* Rebuild view matrix without translation (upper-left 3x3 only). */
         mat4 rotView = mat4(
             mView[0][0], mView[0][1], mView[0][2], 0.0,
             mView[1][0], mView[1][1], mView[1][2], 0.0,
@@ -200,7 +185,6 @@ export let skyboxVSText = `
 
         vec4 pos = mProj * rotView * vec4(vertPosition, 1.0);
 
-        /* Set z = w → depth = 1.0 after perspective divide (far plane). */
         gl_Position = pos.xyww;
     }
 `;
@@ -210,7 +194,6 @@ export let skyboxFSText = `
 
     varying vec3 texCoords;
 
-    /* Sun direction must match the scene light: (-10, 10, -10) normalised. */
     const vec3 SUN_DIR = normalize(vec3(-10.0, 10.0, -10.0));
 
     float hash(vec3 p) {
@@ -222,7 +205,6 @@ export let skyboxFSText = `
     void main () {
         vec3 dir = normalize(texCoords);
 
-        /* --- sky gradient ------------------------------------------ */
         vec3 horizonColor = vec3(0.62, 0.78, 0.95);
         vec3 zenithColor  = vec3(0.10, 0.28, 0.72);
         vec3 groundColor  = vec3(0.28, 0.22, 0.16);
@@ -235,7 +217,6 @@ export let skyboxFSText = `
             skyColor = mix(horizonColor, groundColor, clamp(-dir.y * 3.0, 0.0, 1.0));
         }
 
-        /* --- sun disc + halo --------------------------------------- */
         float sunDot  = dot(dir, SUN_DIR);
         float sunDisc = smoothstep(0.9995, 0.9999, sunDot);
         float sunHalo = pow(clamp(sunDot, 0.0, 1.0), 32.0) * 0.4;
@@ -244,11 +225,9 @@ export let skyboxFSText = `
         skyColor += sunColor * sunHalo;
         skyColor  = mix(skyColor, vec3(1.0, 1.0, 0.9), sunDisc);
 
-        /* --- horizon glow ----------------------------------------- */
         float horizonGlow = pow(1.0 - abs(dir.y), 6.0) * 0.25;
         skyColor += vec3(0.8, 0.5, 0.2) * horizonGlow * step(0.0, dir.y);
 
-        /* --- star field (upper hemisphere, away from sun) ---------- */
         if (dir.y > 0.0 && sunDot < 0.98) {
             vec3  gridDir    = floor(dir * 80.0) / 80.0;
             float star       = hash(gridDir);
