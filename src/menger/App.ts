@@ -60,6 +60,7 @@ export class MengerAnimation extends CanvasAnimation {
   private floorViewUniformLocation: WebGLUniformLocation = -1;
   private floorProjUniformLocation: WebGLUniformLocation = -1;
   private floorLightUniformLocation: WebGLUniformLocation = -1;
+  private floorIndexCount: number = 0;
 
   /* Shadow Rendering Info */
   private shadowVAO: WebGLVertexArrayObjectOES = -1;
@@ -154,13 +155,30 @@ export class MengerAnimation extends CanvasAnimation {
 
     const floorSize = 100.0;
     const floorY = -2.0;
-    const floorPositions = new Float32Array([
-      -floorSize, floorY, -floorSize, 1.0,
-       floorSize, floorY, -floorSize, 1.0,
-       floorSize, floorY,  floorSize, 1.0,
-      -floorSize, floorY,  floorSize, 1.0,
-    ]);
-    const floorIndices = new Uint32Array([0, 2, 1, 0, 3, 2]);
+    const divs = 150;
+    const posArray = [];
+    const indexArray = [];
+    
+    for (let i = 0; i <= divs; i++) {
+        for (let j = 0; j <= divs; j++) {
+            let x = -floorSize + (j / divs) * (floorSize * 2);
+            let z = floorSize - (i / divs) * (floorSize * 2); 
+            posArray.push(x, floorY, z, 1.0);
+        }
+    }
+    
+    for (let i = 0; i < divs; i++) {
+        for (let j = 0; j < divs; j++) {
+            let row1 = i * (divs + 1);
+            let row2 = (i + 1) * (divs + 1);
+            indexArray.push(row1 + j, row2 + j + 1, row1 + j + 1);
+            indexArray.push(row1 + j, row2 + j, row2 + j + 1);
+        }
+    }
+    
+    const floorPositions = new Float32Array(posArray);
+    const floorIndices = new Uint32Array(indexArray);
+    this.floorIndexCount = floorIndices.length;
 
     this.floorPosAttribLoc = gl.getAttribLocation(this.floorProgram, "vertPosition");
     this.floorPosBuffer = gl.createBuffer() as WebGLBuffer;
@@ -182,7 +200,7 @@ export class MengerAnimation extends CanvasAnimation {
 
   public draw(): void {
     this.sponge.updateAnimation();
-    
+
     const gl: WebGLRenderingContext = this.ctx;
 
     const bg: Vec4 = this.backgroundColor;
@@ -200,7 +218,7 @@ export class MengerAnimation extends CanvasAnimation {
     gl.uniformMatrix4fv(this.floorViewUniformLocation, false, new Float32Array(this.gui.viewMatrix().all()));
     gl.uniformMatrix4fv(this.floorProjUniformLocation, false, new Float32Array(this.gui.projMatrix().all()));
     gl.uniform4fv(this.floorLightUniformLocation, this.lightPosition.xyzw);
-    gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, 0);
+    gl.drawElements(gl.TRIANGLES, this.floorIndexCount, gl.UNSIGNED_INT, 0);
 
     /* Re-enable culling for the sponge */
     gl.enable(gl.CULL_FACE);
