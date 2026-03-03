@@ -9,7 +9,9 @@ import {
   defaultFSText,
   defaultVSText,
   floorFSText,
-  floorVSText
+  floorVSText,
+  shadowVSText,
+  shadowFSText
 } from "./Shaders.js";
 import { Mat4, Vec4 } from "../lib/TSM.js";
 
@@ -58,6 +60,15 @@ export class MengerAnimation extends CanvasAnimation {
   private floorViewUniformLocation: WebGLUniformLocation = -1;
   private floorProjUniformLocation: WebGLUniformLocation = -1;
   private floorLightUniformLocation: WebGLUniformLocation = -1;
+
+  /* Shadow Rendering Info */
+  private shadowVAO: WebGLVertexArrayObjectOES = -1;
+  private shadowProgram: WebGLProgram = -1;
+  private shadowPosAttribLoc: GLint = -1;
+  private shadowWorldUniformLocation: WebGLUniformLocation = -1;
+  private shadowViewUniformLocation: WebGLUniformLocation = -1;
+  private shadowProjUniformLocation: WebGLUniformLocation = -1;
+  private shadowLightUniformLocation: WebGLUniformLocation = -1;
 
   constructor(canvas: HTMLCanvasElement) {
     super(canvas);
@@ -113,6 +124,23 @@ export class MengerAnimation extends CanvasAnimation {
     gl.uniformMatrix4fv(this.mengerViewUniformLocation, false, new Float32Array(Mat4.identity.all()));
     gl.uniformMatrix4fv(this.mengerProjUniformLocation, false, new Float32Array(Mat4.identity.all()));
     gl.uniform4fv(this.mengerLightUniformLocation, this.lightPosition.xyzw);
+
+    this.shadowProgram = WebGLUtilities.createProgram(gl, shadowVSText, shadowFSText);
+    this.shadowVAO = this.extVAO.createVertexArrayOES() as WebGLVertexArrayObjectOES;
+    this.extVAO.bindVertexArrayOES(this.shadowVAO);
+
+    this.shadowPosAttribLoc = gl.getAttribLocation(this.shadowProgram, "vertPosition");
+    
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.mengerPosBuffer);
+    gl.vertexAttribPointer(this.shadowPosAttribLoc, 4, gl.FLOAT, false, 4 * Float32Array.BYTES_PER_ELEMENT, 0);
+    gl.enableVertexAttribArray(this.shadowPosAttribLoc);
+    
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.mengerIndexBuffer);
+
+    this.shadowWorldUniformLocation = gl.getUniformLocation(this.shadowProgram, "mWorld") as WebGLUniformLocation;
+    this.shadowViewUniformLocation = gl.getUniformLocation(this.shadowProgram, "mView") as WebGLUniformLocation;
+    this.shadowProjUniformLocation = gl.getUniformLocation(this.shadowProgram, "mProj") as WebGLUniformLocation;
+    this.shadowLightUniformLocation = gl.getUniformLocation(this.shadowProgram, "lightPosition") as WebGLUniformLocation;
   }
 
   public initFloor(): void {
@@ -201,6 +229,18 @@ export class MengerAnimation extends CanvasAnimation {
     gl.uniformMatrix4fv(this.mengerViewUniformLocation, false, new Float32Array(this.gui.viewMatrix().all()));
     gl.uniformMatrix4fv(this.mengerProjUniformLocation, false, new Float32Array(this.gui.projMatrix().all()));
 
+    gl.drawElements(gl.TRIANGLES, this.sponge.indicesFlat().length, gl.UNSIGNED_INT, 0);
+    
+    gl.disable(gl.CULL_FACE);
+    
+    gl.useProgram(this.shadowProgram);
+    this.extVAO.bindVertexArrayOES(this.shadowVAO);
+    
+    gl.uniformMatrix4fv(this.shadowWorldUniformLocation, false, new Float32Array(modelMatrix.all()));
+    gl.uniformMatrix4fv(this.shadowViewUniformLocation, false, new Float32Array(this.gui.viewMatrix().all()));
+    gl.uniformMatrix4fv(this.shadowProjUniformLocation, false, new Float32Array(this.gui.projMatrix().all()));
+    gl.uniform4fv(this.shadowLightUniformLocation, this.lightPosition.xyzw);
+    
     gl.drawElements(gl.TRIANGLES, this.sponge.indicesFlat().length, gl.UNSIGNED_INT, 0);
   }
 

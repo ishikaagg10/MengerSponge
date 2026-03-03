@@ -84,3 +84,33 @@ export let floorFSText = `
         gl_FragColor = vec4(baseColor * diffuse, 1.0);
     }
 `;
+
+export let shadowVSText = `
+    precision mediump float;
+
+    attribute vec4 vertPosition;
+
+    uniform vec4 lightPosition;
+    uniform mat4 mWorld;
+    uniform mat4 mView;
+    uniform mat4 mProj;
+
+    void main () {
+        vec4 worldPos = mWorld * vertPosition;
+        vec3 L = lightPosition.xyz;
+        vec3 P = worldPos.xyz;
+        
+        float t = (-1.99 - L.y) / (P.y - L.y);
+        vec3 P_prime = L + t * (P - L);
+        
+        gl_Position = mProj * mView * vec4(P_prime, 1.0);
+    }
+`;
+
+export let shadowFSText = `
+    precision mediump float;
+
+    void main () {
+        gl_FragColor = vec4(0.1, 0.1, 0.1, 1.0);
+    }
+`;
