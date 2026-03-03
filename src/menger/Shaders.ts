@@ -90,13 +90,12 @@ export let floorVSText = `
         height = n * 4.0; 
         
         vec4 pos = vertPosition;
-        
         pos.y += (height * 0.15);
 
-        float hL = fbm((uv + vec2(-0.1, 0.0)) * 0.15) * 4.0; // <--- CHANGED TO 4.0
-        float hR = fbm((uv + vec2(0.1, 0.0)) * 0.15) * 4.0;  // <--- CHANGED TO 4.0
-        float hD = fbm((uv + vec2(0.0, -0.1)) * 0.15) * 4.0; // <--- CHANGED TO 4.0
-        float hU = fbm((uv + vec2(0.0, 0.1)) * 0.15) * 4.0;  // <--- CHANGED TO 4.0
+        float hL = fbm((uv + vec2(-0.1, 0.0)) * 0.15) * 4.0;
+        float hR = fbm((uv + vec2(0.1, 0.0)) * 0.15) * 4.0;
+        float hD = fbm((uv + vec2(0.0, -0.1)) * 0.15) * 4.0;
+        float hU = fbm((uv + vec2(0.0, 0.1)) * 0.15) * 4.0;
         
         vec3 norm = normalize(vec3(hL - hR, 0.2, hD - hU));
         vNormal = norm;
@@ -115,9 +114,9 @@ export let floorFSText = `
     varying vec3 vNormal;
 
     void main () {
-        vec3 valleyColor = vec3(0.15, 0.4, 0.15); // Verdant green valleys
-        vec3 rockColor = vec3(0.4, 0.35, 0.35);   // Brown/Grey rocks
-        vec3 snowColor = vec3(0.9, 0.95, 1.0);    // White snow peaks
+        vec3 valleyColor = vec3(0.15, 0.4, 0.15);
+        vec3 rockColor   = vec3(0.4, 0.35, 0.35);
+        vec3 snowColor   = vec3(0.9, 0.95, 1.0);
 
         vec3 baseColor;
         if (height < 1.5) {
@@ -126,9 +125,9 @@ export let floorFSText = `
             baseColor = mix(rockColor, snowColor, clamp((height - 1.5) / 2.0, 0.0, 1.0));
         }
 
-        vec3 normal = normalize(vNormal);
-        vec3 l = normalize(lightDir.xyz);
-        float diffuse = max(dot(normal, l), 0.15); // 0.15 is baseline ambient light
+        vec3 normal  = normalize(vNormal);
+        vec3 l       = normalize(lightDir.xyz);
+        float diffuse = max(dot(normal, l), 0.15);
         
         gl_FragColor = vec4(baseColor * diffuse, 1.0);
     }
@@ -161,5 +160,104 @@ export let shadowFSText = `
 
     void main () {
         gl_FragColor = vec4(0.1, 0.1, 0.1, 1.0);
+    }
+`;
+
+/* ===================================================================
+   SKYBOX SHADERS
+   ===================================================================
+   Strategy:
+     Vertex shader  – strips translation from the view matrix so the
+                      box is always centred on the camera eye.  Sets
+                      gl_Position = pos.xyww so that after the
+                      perspective divide z/w == 1.0, placing the box
+                      exactly at the far plane.
+     Fragment shader – fully procedural sky (no texture files needed):
+                       blue gradient, sun disc + halo, horizon glow,
+                       and a star field.
+   =================================================================== */
+
+export let skyboxVSText = `
+    precision mediump float;
+
+    attribute vec3 vertPosition;
+
+    varying vec3 texCoords;
+
+    uniform mat4 mView;
+    uniform mat4 mProj;
+
+    void main () {
+        texCoords = vertPosition;
+
+        /* Rebuild view matrix without translation (upper-left 3x3 only). */
+        mat4 rotView = mat4(
+            mView[0][0], mView[0][1], mView[0][2], 0.0,
+            mView[1][0], mView[1][1], mView[1][2], 0.0,
+            mView[2][0], mView[2][1], mView[2][2], 0.0,
+            0.0,         0.0,         0.0,         1.0
+        );
+
+        vec4 pos = mProj * rotView * vec4(vertPosition, 1.0);
+
+        /* Set z = w → depth = 1.0 after perspective divide (far plane). */
+        gl_Position = pos.xyww;
+    }
+`;
+
+export let skyboxFSText = `
+    precision mediump float;
+
+    varying vec3 texCoords;
+
+    /* Sun direction must match the scene light: (-10, 10, -10) normalised. */
+    const vec3 SUN_DIR = normalize(vec3(-10.0, 10.0, -10.0));
+
+    float hash(vec3 p) {
+        p = fract(p * vec3(443.897, 441.423, 437.195));
+        p += dot(p, p.yzx + 19.19);
+        return fract((p.x + p.y) * p.z);
+    }
+
+    void main () {
+        vec3 dir = normalize(texCoords);
+
+        /* --- sky gradient ------------------------------------------ */
+        vec3 horizonColor = vec3(0.62, 0.78, 0.95);
+        vec3 zenithColor  = vec3(0.10, 0.28, 0.72);
+        vec3 groundColor  = vec3(0.28, 0.22, 0.16);
+
+        vec3 skyColor;
+        if (dir.y >= 0.0) {
+            float t = clamp(dir.y, 0.0, 1.0);
+            skyColor = mix(horizonColor, zenithColor, pow(t, 0.6));
+        } else {
+            skyColor = mix(horizonColor, groundColor, clamp(-dir.y * 3.0, 0.0, 1.0));
+        }
+
+        /* --- sun disc + halo --------------------------------------- */
+        float sunDot  = dot(dir, SUN_DIR);
+        float sunDisc = smoothstep(0.9995, 0.9999, sunDot);
+        float sunHalo = pow(clamp(sunDot, 0.0, 1.0), 32.0) * 0.4;
+        vec3  sunColor = vec3(1.0, 0.95, 0.7);
+
+        skyColor += sunColor * sunHalo;
+        skyColor  = mix(skyColor, vec3(1.0, 1.0, 0.9), sunDisc);
+
+        /* --- horizon glow ----------------------------------------- */
+        float horizonGlow = pow(1.0 - abs(dir.y), 6.0) * 0.25;
+        skyColor += vec3(0.8, 0.5, 0.2) * horizonGlow * step(0.0, dir.y);
+
+        /* --- star field (upper hemisphere, away from sun) ---------- */
+        if (dir.y > 0.0 && sunDot < 0.98) {
+            vec3  gridDir    = floor(dir * 80.0) / 80.0;
+            float star       = hash(gridDir);
+            float brightness = smoothstep(0.992, 1.0, star);
+            float fade       = smoothstep(0.0, 0.15, dir.y)
+                             * smoothstep(0.98, 0.92, sunDot);
+            skyColor += vec3(1.0) * brightness * fade * 0.9;
+        }
+
+        gl_FragColor = vec4(skyColor, 1.0);
     }
 `;
