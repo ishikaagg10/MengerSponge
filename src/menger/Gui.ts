@@ -97,15 +97,27 @@ export class GUI implements IGUI {
     if (dx === 0 && dy === 0) return;
 
     if (mouse.buttons & 1) {
-      const dragDir = Vec3.sum(
-        this.camera.right().scale(dx),
-        this.camera.up().scale(-dy)
-      );
+      if (mouse.shiftKey) {
+        // cube animation
+        const dragDir = Vec3.sum(
+          this.camera.right().scale(dx),
+          this.camera.up().scale(-dy)
+        );
 
-      const axis = Vec3.cross(dragDir, this.camera.forward());
-
-      this.camera.rotate(axis, GUI.rotationSpeed);
-
+        let axis = Vec3.cross(dragDir, this.camera.forward());
+        if (axis.length() > 0.0001) {
+          axis.normalize();
+          const speed = dragDir.length() * 0.005;
+          this.sponge.addSpin(axis, speed);
+        }
+      } else {
+        const dragDir = Vec3.sum(
+          this.camera.right().scale(dx),
+          this.camera.up().scale(-dy)
+        );
+        const axis = Vec3.cross(dragDir, this.camera.forward());
+        this.camera.rotate(axis, GUI.rotationSpeed);
+      }
     } else if (mouse.buttons & 2) {
       this.camera.offsetDist(dy * GUI.zoomSpeed);
     }

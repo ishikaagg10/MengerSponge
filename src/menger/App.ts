@@ -181,6 +181,8 @@ export class MengerAnimation extends CanvasAnimation {
   }
 
   public draw(): void {
+    this.sponge.updateAnimation();
+    
     const gl: WebGLRenderingContext = this.ctx;
 
     const bg: Vec4 = this.backgroundColor;

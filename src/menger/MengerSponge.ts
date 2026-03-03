@@ -17,9 +17,30 @@ export class MengerSponge implements IMengerSponge {
 
   private positions: number[] = [];
   private normals: number[] = [];
+  private currentRotation: Mat4 = new Mat4().setIdentity();
+  private spinAxis: Vec3 = new Vec3([0, 1, 0]);
+  private spinSpeed: number = 0.0;
   private indices: number[] = [];
   private dirty: boolean = true;
   private level: number = 1;
+
+  public addSpin(axis: Vec3, speed: number): void {
+      this.spinAxis = axis;
+      this.spinSpeed = speed;
+
+      if (this.spinSpeed > 0 && !Number.isNaN(this.spinAxis.x)) {
+          this.currentRotation.rotate(this.spinSpeed, this.spinAxis);
+      }
+  }
+
+  public updateAnimation(): void {
+      if (this.spinSpeed > 0.0001 && !Number.isNaN(this.spinAxis.x)) {
+          this.currentRotation.rotate(this.spinSpeed, this.spinAxis);
+          this.spinSpeed *= 0.93;
+      } else {
+          this.spinSpeed = 0.0;
+      }
+  }
   
   constructor(level: number) {
 	  this.setLevel(level);
@@ -76,11 +97,7 @@ export class MengerSponge implements IMengerSponge {
    * Returns the model matrix of the sponge
    */
   public uMatrix(): Mat4 {
-
-    // TODO: change this, if it's useful
-    const ret : Mat4 = new Mat4().setIdentity();
-
-    return ret;    
+    return this.currentRotation.copy();
   }
   
   private buildMengerSponge(
